@@ -1,5 +1,6 @@
-﻿using Bit.Commercial.Core.SecretManagerFeatures;
+﻿using Bit.Commercial.Core.Providers;
 using Bit.Commercial.Core.Services;
+using Bit.Core.Providers.Interfaces;
 using Bit.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,10 +11,6 @@ public static class ServiceCollectionExtensions
     public static void AddCommercialCoreServices(this IServiceCollection services)
     {
         services.AddScoped<IProviderService, ProviderService>();
-    }
-
-    public static void AddCommercialSecretsManagerServices(this IServiceCollection services)
-    {
-        services.AddSecretManagerServices();
+        services.AddScoped<ICreateProviderCommand, CreateProviderCommand>();
     }
 }

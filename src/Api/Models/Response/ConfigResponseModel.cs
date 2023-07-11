@@ -10,26 +10,32 @@ public class ConfigResponseModel : ResponseModel
     public string GitHash { get; set; }
     public ServerConfigResponseModel Server { get; set; }
     public EnvironmentConfigResponseModel Environment { get; set; }
+    public IDictionary<string, object> FeatureStates { get; set; }
 
-    public ConfigResponseModel(string obj = "config") : base(obj)
+    public ConfigResponseModel() : base("config")
     {
         Version = AssemblyHelpers.GetVersion();
         GitHash = AssemblyHelpers.GetGitHash();
         Environment = new EnvironmentConfigResponseModel();
+        FeatureStates = new Dictionary<string, object>();
     }
 
-    public ConfigResponseModel(IGlobalSettings globalSettings, string obj = "config") : base(obj)
+    public ConfigResponseModel(
+        IGlobalSettings globalSettings,
+        IDictionary<string, object> featureStates) : base("config")
     {
         Version = AssemblyHelpers.GetVersion();
         GitHash = AssemblyHelpers.GetGitHash();
         Environment = new EnvironmentConfigResponseModel
         {
+            CloudRegion = globalSettings.BaseServiceUri.CloudRegion,
             Vault = globalSettings.BaseServiceUri.Vault,
             Api = globalSettings.BaseServiceUri.Api,
             Identity = globalSettings.BaseServiceUri.Identity,
             Notifications = globalSettings.BaseServiceUri.Notifications,
             Sso = globalSettings.BaseServiceUri.Sso
         };
+        FeatureStates = featureStates;
     }
 }
 
@@ -41,6 +47,7 @@ public class ServerConfigResponseModel
 
 public class EnvironmentConfigResponseModel
 {
+    public string CloudRegion { get; set; }
     public string Vault { get; set; }
     public string Api { get; set; }
     public string Identity { get; set; }

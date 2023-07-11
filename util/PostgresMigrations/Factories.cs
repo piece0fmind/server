@@ -3,18 +3,24 @@ using Bit.Infrastructure.EntityFramework.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bit.PostgresMigrations;
 
-public static class GlobalSettingsFactory
+public class GlobalSettingsFactory
 {
-    public static GlobalSettings GlobalSettings { get; } = new GlobalSettings();
-    static GlobalSettingsFactory()
+    public GlobalSettings GlobalSettings { get; }
+
+    public GlobalSettingsFactory(string[] args)
     {
+        GlobalSettings = new GlobalSettings();
         // UserSecretsId here should match what is in Api.csproj
-        var configBuilder = new ConfigurationBuilder().AddUserSecrets("bitwarden-Api");
-        var Configuration = configBuilder.Build();
-        ConfigurationBinder.Bind(Configuration.GetSection("GlobalSettings"), GlobalSettings);
+        var config = new ConfigurationBuilder()
+            .AddUserSecrets("bitwarden-Api")
+            .AddCommandLine(args)
+            .Build();
+
+        config.GetSection("GlobalSettings").Bind(GlobalSettings);
     }
 }
 
@@ -22,7 +28,12 @@ public class DatabaseContextFactory : IDesignTimeDbContextFactory<DatabaseContex
 {
     public DatabaseContext CreateDbContext(string[] args)
     {
-        var globalSettings = GlobalSettingsFactory.GlobalSettings;
+        var services = new ServiceCollection();
+        services.AddDataProtection();
+        var serviceProvider = services.BuildServiceProvider();
+
+        var globalSettings = new GlobalSettingsFactory(args)
+            .GlobalSettings;
         var optionsBuilder = new DbContextOptionsBuilder<DatabaseContext>();
         var connectionString = globalSettings.PostgreSql?.ConnectionString;
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -31,7 +42,8 @@ public class DatabaseContextFactory : IDesignTimeDbContextFactory<DatabaseContex
         }
         optionsBuilder.UseNpgsql(
             connectionString,
-            b => b.MigrationsAssembly("PostgresMigrations"));
+            b => b.MigrationsAssembly("PostgresMigrations"))
+           .UseApplicationServiceProvider(serviceProvider);
         return new DatabaseContext(optionsBuilder.Options);
     }
 }

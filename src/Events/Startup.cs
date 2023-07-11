@@ -29,6 +29,9 @@ public class Startup
         // Settings
         var globalSettings = services.AddGlobalSettingsServices(Configuration, Environment);
 
+        // Data Protection
+        services.AddCustomDataProtectionServices(Environment, globalSettings);
+
         // Repositories
         services.AddDatabaseRepositories(globalSettings);
 
@@ -89,6 +92,12 @@ public class Startup
 
         // Add general security headers
         app.UseMiddleware<SecurityHeadersMiddleware>();
+
+        // Forwarding Headers
+        if (globalSettings.SelfHosted)
+        {
+            app.UseForwardedHeaders(globalSettings);
+        }
 
         if (env.IsDevelopment())
         {

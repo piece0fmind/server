@@ -84,13 +84,13 @@ public class ProviderUserRepository : Repository<ProviderUser, Guid>, IProviderU
         }
     }
 
-    public async Task<ICollection<ProviderUserUserDetails>> GetManyDetailsByProviderAsync(Guid providerId)
+    public async Task<ICollection<ProviderUserUserDetails>> GetManyDetailsByProviderAsync(Guid providerId, ProviderUserStatusType? status)
     {
         using (var connection = new SqlConnection(ConnectionString))
         {
             var results = await connection.QueryAsync<ProviderUserUserDetails>(
                 "[dbo].[ProviderUserUserDetails_ReadByProviderId]",
-                new { ProviderId = providerId },
+                new { ProviderId = providerId, Status = status },
                 commandType: CommandType.StoredProcedure);
 
             return results.ToList();
@@ -158,6 +158,19 @@ public class ProviderUserRepository : Repository<ProviderUser, Guid>, IProviderU
                 commandType: CommandType.StoredProcedure);
 
             return results;
+        }
+    }
+
+    public async Task<ICollection<ProviderUser>> GetManyByOrganizationAsync(Guid organizationId, ProviderUserStatusType? status = null)
+    {
+        using (var connection = new SqlConnection(ConnectionString))
+        {
+            var results = await connection.QueryAsync<ProviderUser>(
+                "[dbo].[ProviderUser_ReadByOrganizationIdStatus]",
+                new { OrganizationId = organizationId, Status = status },
+                commandType: CommandType.StoredProcedure);
+
+            return results.ToList();
         }
     }
 }

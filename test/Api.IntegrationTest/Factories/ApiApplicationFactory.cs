@@ -1,4 +1,4 @@
-﻿using Bit.Core.Models.Api.Request.Accounts;
+﻿using Bit.Core.Auth.Models.Api.Request.Accounts;
 using Bit.IntegrationTestCommon.Factories;
 using IdentityServer4.AccessTokenValidation;
 using Microsoft.AspNetCore.TestHost;
@@ -43,6 +43,14 @@ public class ApiApplicationFactory : WebApplicationFactoryBase<Startup>
             MasterPasswordHash = masterPasswordHash,
         });
 
+        return await _identityApplicationFactory.TokenFromPasswordAsync(email, masterPasswordHash);
+    }
+
+    /// <summary>
+    /// Helper for logging in to an account
+    /// </summary>
+    public async Task<(string Token, string RefreshToken)> LoginAsync(string email = "integration-test@bitwarden.com", string masterPasswordHash = "master_password_hash")
+    {
         return await _identityApplicationFactory.TokenFromPasswordAsync(email, masterPasswordHash);
     }
 }

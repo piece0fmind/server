@@ -3,6 +3,7 @@ using Bit.Core.Enums;
 using Bit.Core.Models.Api;
 using Bit.Core.Models.Business;
 using Bit.Core.Utilities;
+using Constants = Bit.Core.Constants;
 
 namespace Bit.Api.Models.Response.Organizations;
 
@@ -17,7 +18,6 @@ public class OrganizationResponseModel : ResponseModel
         }
 
         Id = organization.Id.ToString();
-        Identifier = organization.Identifier;
         Name = organization.Name;
         BusinessName = organization.BusinessName;
         BusinessAddress1 = organization.BusinessAddress1;
@@ -26,7 +26,7 @@ public class OrganizationResponseModel : ResponseModel
         BusinessCountry = organization.BusinessCountry;
         BusinessTaxNumber = organization.BusinessTaxNumber;
         BillingEmail = organization.BillingEmail;
-        Plan = new PlanResponseModel(StaticStore.Plans.FirstOrDefault(plan => plan.Type == organization.PlanType));
+        Plan = new PlanResponseModel(StaticStore.PasswordManagerPlans.FirstOrDefault(plan => plan.Type == organization.PlanType));
         PlanType = organization.PlanType;
         Seats = organization.Seats;
         MaxAutoscaleSeats = organization.MaxAutoscaleSeats;
@@ -48,10 +48,14 @@ public class OrganizationResponseModel : ResponseModel
         UseCustomPermissions = organization.UseCustomPermissions;
         SelfHost = organization.SelfHost;
         HasPublicAndPrivateKeys = organization.PublicKey != null && organization.PrivateKey != null;
+        UsePasswordManager = organization.UsePasswordManager;
+        SmSeats = organization.SmSeats;
+        SmServiceAccounts = organization.SmServiceAccounts;
+        MaxAutoscaleSmSeats = organization.MaxAutoscaleSmSeats;
+        MaxAutoscaleSmServiceAccounts = organization.MaxAutoscaleSmServiceAccounts;
     }
 
     public string Id { get; set; }
-    public string Identifier { get; set; }
     public string Name { get; set; }
     public string BusinessName { get; set; }
     public string BusinessAddress1 { get; set; }
@@ -82,35 +86,65 @@ public class OrganizationResponseModel : ResponseModel
     public bool UseCustomPermissions { get; set; }
     public bool SelfHost { get; set; }
     public bool HasPublicAndPrivateKeys { get; set; }
+    public bool UsePasswordManager { get; set; }
+    public int? SmSeats { get; set; }
+    public int? SmServiceAccounts { get; set; }
+    public int? MaxAutoscaleSmSeats { get; set; }
+    public int? MaxAutoscaleSmServiceAccounts { get; set; }
 }
 
 public class OrganizationSubscriptionResponseModel : OrganizationResponseModel
 {
-    public OrganizationSubscriptionResponseModel(Organization organization, SubscriptionInfo subscription = null)
-        : base(organization, "organizationSubscription")
+    public OrganizationSubscriptionResponseModel(Organization organization) : base(organization, "organizationSubscription")
     {
-        if (subscription != null)
-        {
-            Subscription = subscription.Subscription != null ?
-                new BillingSubscription(subscription.Subscription) : null;
-            UpcomingInvoice = subscription.UpcomingInvoice != null ?
-                new BillingSubscriptionUpcomingInvoice(subscription.UpcomingInvoice) : null;
-            Expiration = DateTime.UtcNow.AddYears(1); // Not used, so just give it a value.
-        }
-        else
-        {
-            Expiration = organization.ExpirationDate;
-        }
-
+        Expiration = organization.ExpirationDate;
         StorageName = organization.Storage.HasValue ?
             CoreHelpers.ReadableBytesSize(organization.Storage.Value) : null;
         StorageGb = organization.Storage.HasValue ?
             Math.Round(organization.Storage.Value / 1073741824D, 2) : 0; // 1 GB
     }
 
+    public OrganizationSubscriptionResponseModel(Organization organization, SubscriptionInfo subscription, bool hideSensitiveData)
+        : this(organization)
+    {
+        Subscription = subscription.Subscription != null ? new BillingSubscription(subscription.Subscription) : null;
+        UpcomingInvoice = subscription.UpcomingInvoice != null ? new BillingSubscriptionUpcomingInvoice(subscription.UpcomingInvoice) : null;
+        Expiration = DateTime.UtcNow.AddYears(1); // Not used, so just give it a value.
+
+        if (hideSensitiveData)
+        {
+            BillingEmail = null;
+            Subscription.Items = null;
+            UpcomingInvoice.Amount = null;
+        }
+    }
+
+    public OrganizationSubscriptionResponseModel(Organization organization, OrganizationLicense license) :
+        this(organization)
+    {
+        if (license != null)
+        {
+            // License expiration should always include grace period - See OrganizationLicense.cs
+            Expiration = license.Expires;
+            // Use license.ExpirationWithoutGracePeriod if available, otherwise assume license expiration minus grace period
+            ExpirationWithoutGracePeriod = license.ExpirationWithoutGracePeriod ??
+                                             license.Expires?.AddDays(-Constants
+                                                 .OrganizationSelfHostSubscriptionGracePeriodDays);
+        }
+    }
+
     public string StorageName { get; set; }
     public double? StorageGb { get; set; }
     public BillingSubscription Subscription { get; set; }
     public BillingSubscriptionUpcomingInvoice UpcomingInvoice { get; set; }
+
+    /// <summary>
+    /// Date when a self-hosted organization's subscription expires, without any grace period.
+    /// </summary>
+    public DateTime? ExpirationWithoutGracePeriod { get; set; }
+
+    /// <summary>
+    /// Date when a self-hosted organization expires (includes grace period).
+    /// </summary>
     public DateTime? Expiration { get; set; }
 }

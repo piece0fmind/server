@@ -1,4 +1,7 @@
-﻿using Bit.Core.Enums;
+﻿using Bit.Core.Auth.Enums;
+using Bit.Core.Auth.Models.Data;
+using Bit.Core.Enums;
+using Bit.Core.Enums.Provider;
 using Bit.Core.Models.Api;
 using Bit.Core.Models.Data;
 using Bit.Core.Models.Data.Organizations.OrganizationUsers;
@@ -28,6 +31,8 @@ public class ProfileOrganizationResponseModel : ResponseModel
         UseSecretsManager = organization.UseSecretsManager;
         UsersGetPremium = organization.UsersGetPremium;
         UseCustomPermissions = organization.UseCustomPermissions;
+        UseActivateAutofillPolicy = organization.PlanType == PlanType.EnterpriseAnnually ||
+            organization.PlanType == PlanType.EnterpriseMonthly;
         SelfHost = organization.SelfHost;
         Seats = organization.Seats;
         MaxCollections = organization.MaxCollections;
@@ -44,19 +49,21 @@ public class ProfileOrganizationResponseModel : ResponseModel
         UserId = organization.UserId?.ToString();
         ProviderId = organization.ProviderId?.ToString();
         ProviderName = organization.ProviderName;
+        ProviderType = organization.ProviderType;
         FamilySponsorshipFriendlyName = organization.FamilySponsorshipFriendlyName;
         FamilySponsorshipAvailable = FamilySponsorshipFriendlyName == null &&
             StaticStore.GetSponsoredPlan(PlanSponsorshipType.FamiliesForEnterprise)
             .UsersCanSponsor(organization);
-        PlanProductType = StaticStore.GetPlan(organization.PlanType).Product;
+        PlanProductType = StaticStore.GetPasswordManagerPlan(organization.PlanType).Product;
         FamilySponsorshipLastSyncDate = organization.FamilySponsorshipLastSyncDate;
         FamilySponsorshipToDelete = organization.FamilySponsorshipToDelete;
         FamilySponsorshipValidUntil = organization.FamilySponsorshipValidUntil;
+        AccessSecretsManager = organization.AccessSecretsManager;
 
         if (organization.SsoConfig != null)
         {
             var ssoConfigData = SsoConfigurationData.Deserialize(organization.SsoConfig);
-            KeyConnectorEnabled = ssoConfigData.KeyConnectorEnabled && !string.IsNullOrEmpty(ssoConfigData.KeyConnectorUrl);
+            KeyConnectorEnabled = ssoConfigData.MemberDecryptionType == MemberDecryptionType.KeyConnector && !string.IsNullOrEmpty(ssoConfigData.KeyConnectorUrl);
             KeyConnectorUrl = ssoConfigData.KeyConnectorUrl;
         }
     }
@@ -77,6 +84,7 @@ public class ProfileOrganizationResponseModel : ResponseModel
     public bool UseSecretsManager { get; set; }
     public bool UsersGetPremium { get; set; }
     public bool UseCustomPermissions { get; set; }
+    public bool UseActivateAutofillPolicy { get; set; }
     public bool SelfHost { get; set; }
     public int? Seats { get; set; }
     public short? MaxCollections { get; set; }
@@ -93,6 +101,7 @@ public class ProfileOrganizationResponseModel : ResponseModel
     public bool HasPublicAndPrivateKeys { get; set; }
     public string ProviderId { get; set; }
     public string ProviderName { get; set; }
+    public ProviderType? ProviderType { get; set; }
     public string FamilySponsorshipFriendlyName { get; set; }
     public bool FamilySponsorshipAvailable { get; set; }
     public ProductType PlanProductType { get; set; }
@@ -101,4 +110,5 @@ public class ProfileOrganizationResponseModel : ResponseModel
     public DateTime? FamilySponsorshipLastSyncDate { get; set; }
     public DateTime? FamilySponsorshipValidUntil { get; set; }
     public bool? FamilySponsorshipToDelete { get; set; }
+    public bool AccessSecretsManager { get; set; }
 }

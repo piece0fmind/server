@@ -4,8 +4,9 @@ using Bit.Core.Context;
 using Bit.Core.Enums;
 using Bit.Core.Identity;
 using Bit.Core.IdentityServer;
-using Bit.Core.Models.Data;
 using Bit.Core.Repositories;
+using Bit.Core.SecretsManager.Models.Data;
+using Bit.Core.SecretsManager.Repositories;
 using Bit.Core.Services;
 using Bit.Core.Settings;
 using Bit.Core.Utilities;
@@ -95,11 +96,27 @@ public class ClientStore : IClientStore
             return null;
         }
 
+        switch (apiKey)
+        {
+            case ServiceAccountApiKeyDetails key:
+                var org = await _organizationRepository.GetByIdAsync(key.ServiceAccountOrganizationId);
+                if (!org.UseSecretsManager)
+                {
+                    return null;
+                }
+                break;
+        }
+
+        if (string.IsNullOrEmpty(apiKey.ClientSecretHash))
+        {
+            apiKey.ClientSecretHash = apiKey.ClientSecret.Sha256();
+        }
+
         var client = new Client
         {
             ClientId = clientId,
             RequireClientSecret = true,
-            ClientSecrets = { new Secret(apiKey.ClientSecret.Sha256()) },
+            ClientSecrets = { new Secret(apiKey.ClientSecretHash) },
             AllowedScopes = apiKey.GetScopes(),
             AllowedGrantTypes = GrantTypes.ClientCredentials,
             AccessTokenLifetime = 3600 * 1,
@@ -110,6 +127,7 @@ public class ClientStore : IClientStore
             Claims = new List<ClientClaim>
             {
                 new(JwtClaimTypes.Subject, apiKey.ServiceAccountId.ToString()),
+                new(Claims.Type, ClientType.ServiceAccount.ToString()),
             },
         };
 
@@ -141,6 +159,7 @@ public class ClientStore : IClientStore
         {
             new(JwtClaimTypes.Subject, user.Id.ToString()),
             new(JwtClaimTypes.AuthenticationMethod, "Application", "external"),
+            new(Claims.Type, ClientType.User.ToString()),
         };
         var orgs = await _currentContext.OrganizationMembershipAsync(_organizationUserRepository, user.Id);
         var providers = await _currentContext.ProviderMembershipAsync(_providerUserRepository, user.Id);
@@ -198,6 +217,7 @@ public class ClientStore : IClientStore
             Claims = new List<ClientClaim>
             {
                 new(JwtClaimTypes.Subject, org.Id.ToString()),
+                new(Claims.Type, ClientType.Organization.ToString()),
             },
         };
     }

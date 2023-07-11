@@ -1,4 +1,5 @@
-﻿using Bit.Core.Enums;
+﻿using Bit.Core.Auth.Enums;
+using Bit.Core.Enums;
 using Bit.Core.Enums.Provider;
 using Bit.Infrastructure.EntityFramework.Repositories.Queries;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +35,7 @@ public static class DatabaseContextExtensions
         UpdateUserRevisionDate(users);
     }
 
-    public static async Task UserBumpAccountRevisionDateByCipherIdAsync(this DatabaseContext context, Guid cipherId, Guid? organizationId)
+    public static async Task UserBumpAccountRevisionDateByCipherIdAsync(this DatabaseContext context, Guid cipherId, Guid organizationId)
     {
         var query = new UserBumpAccountRevisionDateByCipherIdQuery(cipherId, organizationId);
         var users = await query.Run(context).ToListAsync();
@@ -63,9 +64,10 @@ public static class DatabaseContextExtensions
                     from cg in cg_g.DefaultIfEmpty()
                     where ou.OrganizationId == organizationId &&
                       ou.Status == OrganizationUserStatusType.Confirmed &&
-                      cg.CollectionId != null &&
-                      ou.AccessAll == true &&
-                      g.AccessAll == true
+                        (cu.CollectionId != null ||
+                        cg.CollectionId != null ||
+                        ou.AccessAll == true ||
+                        g.AccessAll == true)
                     select u;
 
         var users = await query.ToListAsync();

@@ -4,6 +4,8 @@
     <UserSecretsId>bitwarden-Admin</UserSecretsId>
   </PropertyGroup>
   
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Admin' " />
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Admin-SelfHost' " />
   <ItemGroup>
     <ProjectReference Include="..\..\util\MySqlMigrations\MySqlMigrations.csproj" />
     <ProjectReference Include="..\..\util\PostgresMigrations\PostgresMigrations.csproj" />
@@ -23,7 +25,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.26.1" />
-    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="$(MicrosoftVisualStudioWebCodeGenerationDesignVersion)" />
   </ItemGroup>
 
 </Project>

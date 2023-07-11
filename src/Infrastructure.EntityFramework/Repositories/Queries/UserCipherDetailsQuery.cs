@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using Bit.Core.Enums;
-using Core.Models.Data;
+using Bit.Core.Vault.Models.Data;
+using Bit.Infrastructure.EntityFramework.Vault.Models;
 
 namespace Bit.Infrastructure.EntityFramework.Repositories.Queries;
 
@@ -49,7 +50,7 @@ public class UserCipherDetailsQuery : IQuery<CipherDetails>
 
                     where ou.AccessAll || cu.CollectionId != null || g.AccessAll || cg.CollectionId != null
 
-                    select new { c, ou, o, cc, cu, gu, g, cg }.c;
+                    select c;
 
         var query2 = from c in dbContext.Ciphers
                      where c.UserId == _userId
@@ -66,7 +67,7 @@ public class UserCipherDetailsQuery : IQuery<CipherDetails>
             CreationDate = c.CreationDate,
             RevisionDate = c.RevisionDate,
             DeletedDate = c.DeletedDate,
-            Favorite = _userId.HasValue && c.Favorites != null && c.Favorites.Contains($"\"{_userId}\":true"),
+            Favorite = _userId.HasValue && c.Favorites != null && c.Favorites.ToLowerInvariant().Contains($"\"{_userId}\":true"),
             FolderId = GetFolderId(_userId, c),
             Edit = true,
             Reprompt = c.Reprompt,
@@ -76,16 +77,25 @@ public class UserCipherDetailsQuery : IQuery<CipherDetails>
         return union;
     }
 
-    private static Guid? GetFolderId(Guid? userId, Models.Cipher cipher)
+    private static Guid? GetFolderId(Guid? userId, Cipher cipher)
     {
-        if (userId.HasValue && !string.IsNullOrWhiteSpace(cipher.Folders))
+        try
         {
-            var folders = JsonSerializer.Deserialize<Dictionary<Guid, Guid>>(cipher.Folders);
-            if (folders.TryGetValue(userId.Value, out var folder))
+            if (userId.HasValue && !string.IsNullOrWhiteSpace(cipher.Folders))
             {
-                return folder;
+                var folders = JsonSerializer.Deserialize<Dictionary<Guid, Guid>>(cipher.Folders);
+                if (folders.TryGetValue(userId.Value, out var folder))
+                {
+                    return folder;
+                }
             }
+
+            return null;
         }
-        return null;
+        catch
+        {
+            // Some Folders might be in an invalid format like: '{ "", "<ValidGuid>" }'
+            return null;
+        }
     }
 }
